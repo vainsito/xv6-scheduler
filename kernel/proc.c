@@ -458,6 +458,7 @@ scheduler(void)
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
+        p->contador++;
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
@@ -677,7 +678,8 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    // Agregamos el contador de veces que se ejecuto.
+    printf("%d %s %s %d", p->pid, state, p->name, p->contador);
     printf("\n");
   }
 }

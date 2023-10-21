@@ -89,3 +89,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 
+sys_pstat()
+{
+  int pid;
+  argint(0, &pid);
+  
+  printf("Number of times run: %d \n",cpus[0].proc[pid].contador); 
+  printf ("Priority: 0 \n");
+
+return 1;
+}
