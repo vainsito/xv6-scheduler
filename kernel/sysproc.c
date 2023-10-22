@@ -96,9 +96,11 @@ sys_pstat()
   int pid;
   argint(0, &pid);
   
-  printf("Number of times run: %d \n",cpus[0].proc[pid].contador); 
+  struct proc *p = myproc();
+  acquire(&p->lock);
+  printf("Number of times run: %d \n",p->contador); 
   printf ("Priority: 0 \n");
-  printf ("Last time executed: %d \n",cpus[0].proc[pid].lst);
-
+  printf ("Last time executed: %d \n",p->lst);
+  release(&p->lock);
 return 1;
 }
