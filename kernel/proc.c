@@ -459,6 +459,7 @@ scheduler(void)
         // to release its lock and then reacquire it
         // before jumping back to us.
         p->contador++;
+        p->lst = ticks;
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);

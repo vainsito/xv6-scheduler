@@ -98,6 +98,7 @@ sys_pstat()
   
   printf("Number of times run: %d \n",cpus[0].proc[pid].contador); 
   printf ("Priority: 0 \n");
+  printf ("Last time executed: %d \n",cpus[0].proc[pid].lst);
 
 return 1;
 }
