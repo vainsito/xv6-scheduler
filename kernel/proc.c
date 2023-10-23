@@ -124,6 +124,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->priority = NPRIO-1;
   p->contador = 0;
   p->lst = 0;
 
@@ -460,6 +461,9 @@ scheduler(void)
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
+        if (p->priority < NPRIO-1){
+        p->priority++;
+        }
         p->contador++;
         p->lst = ticks;
         p->state = RUNNING;
@@ -509,6 +513,9 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  if (p->priority > 0){
+    p->priority--;
+  }
   sched();
   release(&p->lock);
 }
@@ -682,7 +689,7 @@ procdump(void)
     else
       state = "???";
     // Agregamos el contador de veces que se ejecuto.
-    printf("%d %s %s %d", p->pid, state, p->name, p->contador);
+    printf("%d %s %s %d %d", p->pid, state, p->name, p->contador, p->priority);
     printf("\n");
   }
 }

@@ -1,4 +1,5 @@
 #define NPROC        64  // maximum number of processes
+#define NPRIO         3  // cantidad de niveles de prioridad (0, 1 y 2)
 #define NCPU          8  // maximum number of CPUs
 #define NOFILE       16  // open files per process
 #define NFILE       100  // open files per system
