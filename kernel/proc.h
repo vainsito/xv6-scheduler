@@ -104,7 +104,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  uint64 priority;                // Prioridad del proceso
-  uint64 contador;                // Registra la cantidad de veces que fue elegido ese proceso por el planificador.
-  uint64 lst;                     // Registra el ultimo momento donde se ejecuto
+  int contador;                // Registra la cantidad de veces que fue elegido ese proceso por el planificador.
+  int lst;                     // Registra el ultimo momento donde se ejecuto
 };
