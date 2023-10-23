@@ -98,8 +98,8 @@ sys_pstat()
   
   struct proc *p = myproc();
   acquire(&p->lock);
-  printf("Number of times run: %d \n",p->contador); 
-  printf ("Priority: 0 \n");
+  printf("Priority of process: %d \n",p->priority);
+  printf("Number of times run: %d \n",p->contador);
   printf ("Last time executed: %d \n",p->lst);
   release(&p->lock);
 return 1;
