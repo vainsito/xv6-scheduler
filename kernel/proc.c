@@ -578,7 +578,7 @@ sleep(void *chan, struct spinlock *lk)
 
   acquire(&p->lock);  //DOC: sleeplock1
   // Si el proceso se bloquea debemos aumentar su prioridad
-  if (p->priority > 0){
+  if (p->priority < NPRIO-1){
     p->priority++;
   }
   release(lk);
