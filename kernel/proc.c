@@ -29,6 +29,27 @@ struct spinlock wait_lock;
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
+
+//////////////////////////////////////////////////prueba//////////////////////////////////////////////////////////////////
+
+struct pqueue {
+  struct proc procss[NPROC]; //Donde guardamos cada proceso
+  struct proc *prioqueue[NPRIO][NPROC]; //Queue donde guardamos segun prioridad
+  uint pos_prio[NPRIO]; //Ultimo lugar donde nos paramos en cada prioridad (o cantidad de elementos de cada prio)
+};
+
+void desencolar(struct pqueue a, int prio){
+  a.prioqueue[prio][a.pos_prio[prio]-1] = 0; //no sabemos si queda en 0 o en null
+  a.pos_prio[prio]--;  
+}
+
+void encolar(struct pqueue a, int prio, struct proc *pr){
+  a.prioqueue[prio][a.pos_prio[prio]] = pr;
+  a.pos_prio[prio]++;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void
 proc_mapstacks(pagetable_t kpgtbl)
 {
