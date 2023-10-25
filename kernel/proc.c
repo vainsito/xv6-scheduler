@@ -16,17 +16,16 @@ struct pqueue{
   struct proc proc[NPROC];                // array de procesos
   struct proc *proc_queue[NPRIO][NPROC];  // queue de prioridades de procesos
   uint pos_prio[NPRIO];                   // pos actual en cada queue
-  uint queue_size[NPRIO];                 // cant proc en cada queue
   uint total_size;                        // cant total de procesos en pqueue
   uint max_priority;
   struct spinlock qlock;
 } pq;
 
-struct proc *dequeue(void){
+struct proc *dequeue(){
   
   uint prio = pq.max_priority;
 
-  if(pq.queue_size[prio] == 0){
+  if(pq.pos_prio[prio] == 0){
     return 0;
   }
 
@@ -34,11 +33,10 @@ struct proc *dequeue(void){
 
   struct proc *res;
 
-  if (pq.queue_size[prio] == 1){
+  if (pq.pos_prio[prio] == 1){
     res = pq.proc_queue[prio][0];
     pq.proc_queue[prio][0] = 0;
     pq.pos_prio[prio]--;
-    pq.queue_size[prio]--;
   } else {
     res = pq.proc_queue[prio][0];
 
@@ -48,13 +46,12 @@ struct proc *dequeue(void){
     pq.proc_queue[prio][pq.pos_prio[prio]] = 0;
     
     pq.pos_prio[prio]--;  
-    pq.queue_size[prio]--;
     
   }
 
   pq.total_size--;
   
-  while(pq.max_priority != 0 && pq.queue_size[pq.max_priority] == 0){
+  while(pq.max_priority != 0 && pq.pos_prio[pq.max_priority] == 0){
     pq.max_priority--;
   }
 
@@ -67,7 +64,6 @@ void enqueue(struct proc *pr){
   pq.proc_queue[prio][pq.pos_prio[prio]] = pr;
   
   pq.pos_prio[prio]++;
-  pq.queue_size[prio]++;
   pq.total_size++;
 
   if(prio > pq.max_priority){
@@ -124,7 +120,6 @@ procinit(void)
   }
   pq.max_priority = 0;
   memset(pq.pos_prio,0,sizeof(pq.pos_prio));
-  memset(pq.queue_size,0,sizeof(pq.queue_size));
   memset(pq.proc_queue,0,sizeof(pq.proc_queue));
 }
 
@@ -536,6 +531,14 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
     acquire(&pq.qlock);
+    /*
+    for (uint i = pq.max_priority; i < NPRIO-1 ; i--){
+      // Revisamos si tenemos un elemento en esa prioridad
+      if(pq.pos_prio[i] != 0){
+        p = dequeue();
+      }
+    }
+    */
     if((p = dequeue()) != 0){
       release(&pq.qlock);
       printf("scheduler pq\n");
