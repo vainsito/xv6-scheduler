@@ -119,23 +119,31 @@ return 1;
 
 ### Punto 1:
 - #### Caso 1: Solo un iobench:
+
   ![Caso 1](./Tablas_Experimentos/caso1.jpeg)
 
   **Descripcion del escenario:**
 
 - #### Caso 2: Solo un cpubench:
+
   ![Caso 2](./Tablas_Experimentos/caso2.jpeg)
 
   **Descripcion del escenario:**
+  
 - #### Caso 3: 1 iobench; 1 cpubench:
+
   ![Caso 3](./Tablas_Experimentos/caso3.jpeg)
 
   **Descripcion del escenario:**
+
 - #### Caso 4: 2 cpubench:
+
   ![Caso 4](./Tablas_Experimentos/caso4.jpeg)
 
   **Descripcion del escenario:**
+
 - #### Caso 5: 2 cpubench 1 iobench:
+
   ![Caso 5](./Tablas_Experimentos/caso5.jpeg)
 
   **Descripcion del escenario:**
@@ -143,23 +151,31 @@ return 1;
 
 ### Punto 2: Repetir el experimento para Quantums 10 veces mas cortos:
 - #### Caso 1: Solo un iobench:
+
   ![Caso 1](./Tablas_Experimentos/caso1_10.jpeg)
 
   **Descripcion del escenario:**
 
 - #### Caso 2: Solo un cpubench:
+
   ![Caso 2](./Tablas_Experimentos/caso2_10.jpeg)
 
   **Descripcion del escenario:**
+
 - #### Caso 3: 1 cpubench; 1 iobench :
+
   ![Caso 3](./Tablas_Experimentos/caso3_10.jpeg)
 
   **Descripcion del escenario:**
+
 - #### Caso 4: 2 cpubench:
+
   ![Caso 4](./Tablas_Experimentos/caso4_10.jpeg)
 
   **Descripcion del escenario:**
+
 - #### Caso 5: 2 cpubench 1 iobench:
+
   ![Caso 5](./Tablas_Experimentos/caso5_10.jpeg)
 
   **Descripcion del escenario:**
