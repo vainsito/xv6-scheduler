@@ -123,13 +123,14 @@ return 1;
   ![Caso 1](./Tablas_Experimentos/caso1.jpeg)
 
   **Descripcion del escenario:**
+  
 
 - #### Caso 2: Solo un cpubench:
 
   ![Caso 2](./Tablas_Experimentos/caso2.jpeg)
 
   **Descripcion del escenario:**
-  
+
 - #### Caso 3: 1 iobench; 1 cpubench:
 
   ![Caso 3](./Tablas_Experimentos/caso3.jpeg)
@@ -208,5 +209,87 @@ Buscando dimos con que la funcion **_userinit_** toma un proceso y realiza todas
   ```
 
 Tan solo realizando estas modificaciones el rastreo de prioridad de los procesos fue exitoso.
+---
 
 ## Cuarta Parte:
+
+Para implementar la politica de planificacion MLFQ implementamos una nueva estructura que funciona como una proctable, en la misma tenemos los siguientes campos:
+```c
+struct pqueue{
+  struct proc proc[NPROC];                // array de procesos
+  struct proc *proc_queue[NPRIO][NPROC];  // queue de prioridades de procesos
+  uint pos_prio[NPRIO];                   // pos actual en cada queue
+  uint total_size;                        // cant total de procesos en pqueue
+  uint max_priority;
+  struct spinlock qlock;
+} pq;
+```
+Donde: 
+- **struct proc proc[NPROC]** = Arreglo donde en cada indice tenemos un proceso.
+- **struct proc *proc_queue[NPRIO][NPROC]** = Arreglo de dos dimensiones donde en cada indice se encuentra un proc que tiene asociada una prioridad 0, 1 o 2. Sobre este vamos a hacer la gestion de procesos, actualizando sus prioridades y volviendo a agregarlos en otras posiciones, al igual que tomar procesos anteriormente agregados en las prioridades mas altas para ser ejecutados.
+- **uint pos_prio[NPRIO]** = Arreglo que sirve para conocer el cardinal de procesos asociados a una prioridad.
+- **uint max_priority** = Campo donde guardamos la maxima prioridad que tiene un proceso en el momento de ejecucion (Si tenemos un proceso con prio 1 y otro con prio 0, en max_priority se encuentra 1).
+- **struct spinlock qlock** = Para impedir el acceso de otros procesadores al mismo proceso.
+- **uint total_size** = Cantidad total de procesos en la pqueue.
+
+Para poder administrar esta proc table creamos dos funciones:
+- **Enqueue** (Empleada cada vez que a un proceso se le asigna el estado runnable)
+```c
+void enqueue(struct proc *pr){
+  uint prio = pr->priority;
+
+  pq.proc_queue[prio][pq.pos_prio[prio]] = pr;
+  
+  pq.pos_prio[prio]++;
+  pq.total_size++;
+
+  if(prio > pq.max_priority){
+    pq.max_priority = prio;
+  }
+}
+``` 
+La cual va introduciendo al arreglo de dos dimensiones el proceso con su prioridad actualizada. 
+- **Dequeue** (Utilizada para indicarle al scheduler que proceso ejecutar).
+```c
+struct proc *dequeue(){
+  
+  uint prio = pq.max_priority;
+
+  if(pq.pos_prio[prio] == 0){
+    return 0;
+  }
+
+  acquire(&pq.proc_queue[prio][pq.pos_prio[prio]-1]->lock);
+
+  struct proc *res;
+
+  if (pq.pos_prio[prio] == 1){
+    res = pq.proc_queue[prio][0];
+    pq.proc_queue[prio][0] = 0;
+    pq.pos_prio[prio]--;
+  } else {
+    res = pq.proc_queue[prio][0];
+
+    for(uint i = 0 ; i < pq.pos_prio[prio]; i++){
+      pq.proc_queue[prio][i] = pq.proc_queue[prio][i+1];
+    }
+    pq.proc_queue[prio][pq.pos_prio[prio]] = 0;
+    
+    pq.pos_prio[prio]--;  
+    
+  }
+
+  pq.total_size--;
+  
+  while(pq.max_priority != 0 && pq.pos_prio[pq.max_priority] == 0){
+    pq.max_priority--;
+  }
+
+  return res;
+}
+```
+El cual devuelve el proceso con la prioridad mas alta existente.
+
+### ¿Se puede producir starvation?
+
+Como vimos en la parte teorica de la materia, la existencia del priority boost evita el starvation dentro del MLFQ, al no estar implementado si, se puede producir, por poner un ejemplo, al tener los iobench siempre una prioridad mayor a los cpubenchs, si no dejan de llegar, el segundo sera ejecutado solo un quantum y luego de eso nunca mas.
