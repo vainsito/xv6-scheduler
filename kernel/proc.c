@@ -8,9 +8,74 @@
 
 struct cpu cpus[NCPU];
 
-struct proc proc[NPROC];
-
 struct proc *initproc;
+
+//prueba
+
+struct pqueue{
+  struct proc proc[NPROC];                // array de procesos
+  struct proc *proc_queue[NPRIO][NPROC];  // queue de prioridades de procesos
+  uint pos_prio[NPRIO];                   // pos actual en cada queue
+  uint queue_size[NPRIO];                 // cant proc en cada queue
+  uint total_size;                        // cant total de procesos en pqueue
+  uint max_priority;
+  struct spinlock qlock;
+} pq;
+
+struct proc *dequeue(void){
+  
+  uint prio = pq.max_priority;
+
+  if(pq.queue_size[prio] == 0){
+    return 0;
+  }
+
+  acquire(&pq.proc_queue[prio][pq.pos_prio[prio]-1]->lock);
+
+  struct proc *res;
+
+  if (pq.queue_size[prio] == 1){
+    res = pq.proc_queue[prio][0];
+    pq.proc_queue[prio][0] = 0;
+    pq.pos_prio[prio]--;
+    pq.queue_size[prio]--;
+  } else {
+    res = pq.proc_queue[prio][0];
+
+    for(uint i = 0 ; i < pq.pos_prio[prio]; i++){
+      pq.proc_queue[prio][i] = pq.proc_queue[prio][i+1];
+    }
+    pq.proc_queue[prio][pq.pos_prio[prio]] = 0;
+    
+    pq.pos_prio[prio]--;  
+    pq.queue_size[prio]--;
+    
+  }
+
+  pq.total_size--;
+  
+  while(pq.max_priority != 0 && pq.queue_size[pq.max_priority] == 0){
+    pq.max_priority--;
+  }
+
+  return res;
+}
+
+void enqueue(struct proc *pr){
+  uint prio = pr->priority;
+
+  pq.proc_queue[prio][pq.pos_prio[prio]] = pr;
+  
+  pq.pos_prio[prio]++;
+  pq.queue_size[prio]++;
+  pq.total_size++;
+
+  if(prio > pq.max_priority){
+    pq.max_priority = prio;
+  }
+}
+
+//fin prueba
 
 int nextpid = 1;
 struct spinlock pid_lock;
@@ -29,37 +94,16 @@ struct spinlock wait_lock;
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
-
-//////////////////////////////////////////////////prueba//////////////////////////////////////////////////////////////////
-
-struct pqueue {
-  struct proc procss[NPROC]; //Donde guardamos cada proceso
-  struct proc *prioqueue[NPRIO][NPROC]; //Queue donde guardamos segun prioridad
-  uint pos_prio[NPRIO]; //Ultimo lugar donde nos paramos en cada prioridad (o cantidad de elementos de cada prio)
-};
-
-void desencolar(struct pqueue a, int prio){
-  a.prioqueue[prio][a.pos_prio[prio]-1] = 0; //no sabemos si queda en 0 o en null
-  a.pos_prio[prio]--;  
-}
-
-void encolar(struct pqueue a, int prio, struct proc *pr){
-  a.prioqueue[prio][a.pos_prio[prio]] = pr;
-  a.pos_prio[prio]++;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void
 proc_mapstacks(pagetable_t kpgtbl)
 {
   struct proc *p;
   
-  for(p = proc; p < &proc[NPROC]; p++) {
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++) {
     char *pa = kalloc();
     if(pa == 0)
       panic("kalloc");
-    uint64 va = KSTACK((int) (p - proc));
+    uint64 va = KSTACK((int) (p - pq.proc));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
 }
@@ -72,11 +116,16 @@ procinit(void)
   
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
-  for(p = proc; p < &proc[NPROC]; p++) {
+  initlock(&pq.qlock, "pqueue_lock");
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->state = UNUSED;
-      p->kstack = KSTACK((int) (p - proc));
+      p->kstack = KSTACK((int) (p - pq.proc));
   }
+  pq.max_priority = 0;
+  memset(pq.pos_prio,0,sizeof(pq.pos_prio));
+  memset(pq.queue_size,0,sizeof(pq.queue_size));
+  memset(pq.proc_queue,0,sizeof(pq.proc_queue));
 }
 
 // Must be called with interrupts disabled,
@@ -132,7 +181,7 @@ allocproc(void)
 {
   struct proc *p;
 
-  for(p = proc; p < &proc[NPROC]; p++) {
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {
       goto found;
@@ -275,6 +324,11 @@ userinit(void)
 
   p->state = RUNNABLE;
 
+  acquire(&pq.qlock);
+  enqueue(p);
+  release(&pq.qlock);
+  printf("userinit\n");
+
   release(&p->lock);
 }
 
@@ -344,8 +398,14 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
-  release(&np->lock);
 
+  acquire(&pq.qlock);
+  enqueue(np);
+  release(&pq.qlock);
+  printf("fork pq\n");
+
+  release(&np->lock);
+  printf("fork np\n");
   return pid;
 }
 
@@ -356,7 +416,7 @@ reparent(struct proc *p)
 {
   struct proc *pp;
 
-  for(pp = proc; pp < &proc[NPROC]; pp++){
+  for(pp = pq.proc; pp < &pq.proc[NPROC]; pp++){
     if(pp->parent == p){
       pp->parent = initproc;
       wakeup(initproc);
@@ -423,7 +483,7 @@ wait(uint64 addr)
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
-    for(pp = proc; pp < &proc[NPROC]; pp++){
+    for(pp = pq.proc; pp < &pq.proc[NPROC]; pp++){
       if(pp->parent == p){
         // make sure the child isn't still in exit() or swtch().
         acquire(&pp->lock);
@@ -475,29 +535,28 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        if (p->priority < NPRIO-1){
-        p->priority++;
-        }
-        p->contador++;
-        p->lst = ticks;
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
+    acquire(&pq.qlock);
+    if((p = dequeue()) != 0){
+      release(&pq.qlock);
+      printf("scheduler pq\n");
+      // Switch to chosen process.  It is the process's job
+      // to release its lock and then reacquire it
+      // before jumping back to us.
+      p->contador++;
+      p->lst = ticks;
+      p->state = RUNNING;
+      c->proc = p;
+      swtch(&c->context, &p->context);
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
       release(&p->lock);
+      printf("scheduler p\n");
+    } else {
+      release(&pq.qlock);
     }
-  }
+    
+  } 
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -537,8 +596,15 @@ yield(void)
   if (p->priority > 0){
     p->priority--;
   }
+
+  acquire(&pq.qlock);
+  enqueue(p);
+  release(&pq.qlock);
+  printf("yield pq\n");
+
   sched();
   release(&p->lock);
+  printf("yield p\n");
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -577,12 +643,11 @@ sleep(void *chan, struct spinlock *lk)
   // so it's okay to release lk.
 
   acquire(&p->lock);  //DOC: sleeplock1
-  // Si el proceso se bloquea debemos aumentar su prioridad
+  release(lk);
+
   if (p->priority < NPRIO-1){
     p->priority++;
   }
-  release(lk);
-
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
@@ -604,11 +669,15 @@ wakeup(void *chan)
 {
   struct proc *p;
 
-  for(p = proc; p < &proc[NPROC]; p++) {
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++) {
     if(p != myproc()){
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
+        acquire(&pq.qlock);
+        enqueue(p);
+        release(&pq.qlock);
+        printf("wakeup pq\n");
       }
       release(&p->lock);
     }
@@ -623,18 +692,24 @@ kill(int pid)
 {
   struct proc *p;
 
-  for(p = proc; p < &proc[NPROC]; p++){
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++){
     acquire(&p->lock);
     if(p->pid == pid){
       p->killed = 1;
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
+        acquire(&pq.qlock);
+        enqueue(p);
+        release(&pq.qlock);
+        printf("kill pq\n");
       }
       release(&p->lock);
+      printf("kill p1\n");
       return 0;
     }
     release(&p->lock);
+    printf("kill p2\n");
   }
   return -1;
 }
@@ -706,7 +781,7 @@ procdump(void)
   char *state;
 
   printf("\n");
-  for(p = proc; p < &proc[NPROC]; p++){
+  for(p = pq.proc; p < &pq.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
