@@ -123,31 +123,42 @@ return 1;
   ![Caso 1](./Tablas_Experimentos/caso1.jpeg)
 
   **Descripcion del escenario:**
-  
+  En este caso tenemos que el proceso Iobench es elegido por el scheduler 467531 veces, ya que este proceso cuando se ejecuta hace unicamente operaciones de I/O. 
+  Cuando el proceso necesita esperar una entrada o salida, el proceso pasa a estar en estado Sleep, entonces libera la CPU antes del quantum.
+  Entonces es elegido tantas veces ya que mientras espera los procesos I/O, esos espacios son ocupados por mas I/O.
 
 - #### Caso 2: Solo un cpubench:
 
   ![Caso 2](./Tablas_Experimentos/caso2.jpeg)
 
   **Descripcion del escenario:**
+  En este caso tenemos el proceso Cpubench unicamente, el cual es elegido 2135 veces. Este proceso requiere unicamente la CPU y usara todo el quantum para ejecutar. Realiza 645 MFLOPS en 100 ticks de cpu. Si hacemos 2135 * 1/10s nos daria 213,5 y
+  213,5 / 60 nos da 3,558 minutos que es aproximadamente lo que tardo en realizarse el proceso Cpubench.
 
 - #### Caso 3: 1 iobench; 1 cpubench:
 
   ![Caso 3](./Tablas_Experimentos/caso3.jpeg)
 
   **Descripcion del escenario:**
+  En el caso donde tengamos 1 proceso Cpubench y 1 proceso IObench. El proceso IObench es elegido 3420 veces y el Cpubench es elegido 2098 veces.
+  Podemos notar que el proceso Cpubench se elige mas veces que cuando era el unico proceso, ya que mientras que el proceso IObench esta en SLEEP, esperando I/O el proceso Cpubench se ejecuta en esos lapsos. No quiere decir que se ejecuta mas tiempo, de hecho es menos, pero es elegido mas veces por el scheduler.
 
 - #### Caso 4: 2 cpubench:
 
   ![Caso 4](./Tablas_Experimentos/caso4.jpeg)
 
   **Descripcion del escenario:**
+  En el caso donde tengamos 2 procesos Cpubench, tenemos el 1ero fue elegido 1050 veces y el segundo 1051 veces. 1050+1051= 2101. Es decir que los procesos se eligen al rededor de 30 veces menos que en el caso donde tenemos un solo Cpubench. Esto se debe a que cuando cambias entre procesos, el context switch consume tiempo tambien, entonces esas 30 veces menos que se hicieron son el costo de cambiar entre el proceso 1 y 2.
 
 - #### Caso 5: 2 cpubench 1 iobench:
 
   ![Caso 5](./Tablas_Experimentos/caso5.jpeg)
 
   **Descripcion del escenario:**
+  En el caso de 2 procesos Cpubench y 1 IObench sucede algo similar que el caso 3. Pero ahora el proceso IObench es elegido menos veces, ya que compite con otro proceso mas (Recordemos que RR no tiene prioridad). Y cada proceso Cpubench es elegido la misma cantidad de veces, ya que el scheduler va a ir alternando
+  entre estos dos procesos para que ultilicen los "tiempos muertos" que brinda el proceso IObench y tambien para que se ejecuten normalmente. Como ya mencionamos
+  anteriormente, la suma de los dos procesos Cpubench es menor que el Cpubench del caso 3, por los costos del context switch.
+
 ---
 
 ### Punto 2: Repetir el experimento para Quantums 10 veces mas cortos:
@@ -155,32 +166,36 @@ return 1;
 
   ![Caso 1](./Tablas_Experimentos/caso1_10.jpeg)
 
-  **Descripcion del escenario:**
-
 - #### Caso 2: Solo un cpubench:
 
   ![Caso 2](./Tablas_Experimentos/caso2_10.jpeg)
-
-  **Descripcion del escenario:**
 
 - #### Caso 3: 1 cpubench; 1 iobench :
 
   ![Caso 3](./Tablas_Experimentos/caso3_10.jpeg)
 
-  **Descripcion del escenario:**
-
 - #### Caso 4: 2 cpubench:
 
   ![Caso 4](./Tablas_Experimentos/caso4_10.jpeg)
 
-  **Descripcion del escenario:**
 
 - #### Caso 5: 2 cpubench 1 iobench:
 
   ![Caso 5](./Tablas_Experimentos/caso5_10.jpeg)
 
-  **Descripcion del escenario:**
+### Conclusion:
 
+Analisis de experimentos con quantum 10 veces mas chico = 1/100s.
+
+En el caso 1 el Iobench se ejecuta aproximadamente las mismas veces porque como el Iobench libera la CPU antes de que se termine el quantum, con el quantum 10
+veces mas chicos no se distingue el cambio. En el caso 2 el Cpubench se ejecuta 21160 veces, si eso lo multiplicamos por el tamaño del quantum y lo dividimos 
+en 60 (para tener el resultado expresado en minutos), nos vuelve a dar 3,5 minutos.
+
+Entonces, podemos concluir:
+- Al ser los quantums mas cortos, vamos a tener que seleccionar el proceso una cantidad de veces considerablemente mas alta que con el time slice normal, debido a que el scheduler debe elegirlo con mayor frecuencia para poder asi finalizar con su ejecucion.
+- Que los procesos sean elegidos una mayor cantidad de veces no significa que su tiempo de ejecucion sea mayor, ya que como las Time slices son menores, se requieren muchos mas cambios de contexto y eso significa tiempo de ejecucion tambien.
+- En los casos donde tengamos procesos Cpubench aumenta la cantidad de MFLOPS.
+- En los casos donde tengamos procesos IObench aumenta la cantidad de OPW y OPR.
 ---
 
 ## Tercera Parte:
@@ -293,3 +308,67 @@ El cual devuelve el proceso con la prioridad mas alta existente.
 ### ¿Se puede producir starvation?
 
 Como vimos en la parte teorica de la materia, la existencia del priority boost evita el starvation dentro del MLFQ, al no estar implementado si, se puede producir, por poner un ejemplo, al tener los iobench siempre una prioridad mayor a los cpubenchs, si no dejan de llegar, el segundo sera ejecutado solo un quantum y luego de eso nunca mas.
+
+### Punto 1: Repetir experimentos con MLFQ:
+
+- #### Caso 1: Solo un iobench:
+
+  ![Caso 1](./Tablas_Experimentos/caso1_mlfq.jpeg)
+
+- #### Caso 2: Solo un cpubench:
+
+  ![Caso 2](./Tablas_Experimentos/caso2_mlfq.jpeg)
+
+- #### Caso 3: 1 cpubench; 1 iobench :
+
+  ![Caso 3](./Tablas_Experimentos/caso3_mlfq.jpeg)
+
+- #### Caso 4: 2 cpubench:
+
+  ![Caso 4](./Tablas_Experimentos/caso4_mlfq.jpeg)
+
+
+- #### Caso 5: 2 cpubench 1 iobench:
+
+  ![Caso 5](./Tablas_Experimentos/caso5_mlfq.jpeg)
+
+### Conclusion:
+Analisis de experimentos en MLFQ con Quantum predeterminado.
+
+Podemos notar que en el caso 1, 2 y 3 tenemos tablas muy parecidas a RR, el principal cambio de mlfq es implementar las prioridades y en caso 1 y 2
+trabajamos con un solo proceso y en caso 3 trabajamos con 2 procesos Cpubound que siempre tendran las mismas prioridades.
+
+En los otros casos, el proceso IObench tendra siempre mas prioridad para ejecutrase que los procesos Cpubench, pero como IObench libera la CPU antes
+de terminar su quantum, se elige muchas veces a Cpubench para que siga ejecutandose.
+
+--- 
+
+### Punto 2: Repetir experimentos con MLFQ y Quantum 10 veces mas cortos:
+
+#### Caso 1: Solo un iobench:
+
+  ![Caso 1](./Tablas_Experimentos/caso1_mlfq10.jpeg)
+
+#### Caso 2: Solo un cpubench:
+
+  ![Caso 2](./Tablas_Experimentos/caso2_mlfq10.jpeg)
+
+#### Caso 3: 1 cpubench; 1 iobench :
+
+  ![Caso 3](./Tablas_Experimentos/caso3_mlfq10.jpeg)
+
+#### Caso 4: 2 cpubench:
+
+  ![Caso 4](./Tablas_Experimentos/caso4_mlfq10.jpeg)
+
+#### Caso 5: 2 cpubench 1 iobench:
+
+  ![Caso 5](./Tablas_Experimentos/caso5_mlfq10.jpeg)
+
+### Conclusion:
+
+Analisis de experimentos en MLFQ con Quantum 10 veces mas chicos.
+
+Las conclusiones que podemos sacar a partir de estas tablas, son muy parecidas a las conclusiones con RR. El principal cambio de Mlfq ya los vimos impactados
+en las otras tablas, analizando como el scheduler elige que proceso ejecutar de acuerdo a su prioridad. La diferencia la podemos notar en que la cantidad de MFLOP de 
+operaciones de Cpubench no varian exageradamente, como si las hacen las operaciones OPW y OPR de iobench.
