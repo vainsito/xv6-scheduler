@@ -10,47 +10,47 @@ struct cpu cpus[NCPU];
 
 struct proc *initproc;
 
-//prueba
 
+// estructura nueva que contiene el array de procesos y un queue de prioridades
 struct pqueue{
   struct proc proc[NPROC];                // array de procesos
   struct proc *proc_queue[NPRIO][NPROC];  // queue de prioridades de procesos
   uint pos_prio[NPRIO];                   // pos actual en cada queue
-  uint total_size;                        // cant total de procesos en pqueue
-  uint max_priority;
+  uint max_priority;                      // prioridad maximo del proceso en el pqueue
   struct spinlock qlock;
 } pq;
 
-struct proc *dequeue(){
+struct proc *dequeue(void){
   
   uint prio = pq.max_priority;
 
+  // si no hay procesos en la prioridad indicada, retorno NULL
   if(pq.pos_prio[prio] == 0){
     return 0;
   }
 
-  acquire(&pq.proc_queue[prio][pq.pos_prio[prio]-1]->lock);
+  acquire(&pq.proc_queue[prio][0]->lock);
 
   struct proc *res;
 
+  // quitamos el proceso del queue, el proceso ejecutado siempre se encuentra en [prio][0]
   if (pq.pos_prio[prio] == 1){
     res = pq.proc_queue[prio][0];
     pq.proc_queue[prio][0] = 0;
     pq.pos_prio[prio]--;
   } else {
     res = pq.proc_queue[prio][0];
-
+    // corremos los proc un lugar a la izquierda
     for(uint i = 0 ; i < pq.pos_prio[prio]; i++){
       pq.proc_queue[prio][i] = pq.proc_queue[prio][i+1];
     }
     pq.proc_queue[prio][pq.pos_prio[prio]] = 0;
     
-    pq.pos_prio[prio]--;  
+    pq.pos_prio[prio]--;
     
   }
 
-  pq.total_size--;
-  
+  // si no hay proc de la prioridad max_priority, descendemos la prioridad hasta encontrar una prioridad con proc
   while(pq.max_priority != 0 && pq.pos_prio[pq.max_priority] == 0){
     pq.max_priority--;
   }
@@ -64,14 +64,12 @@ void enqueue(struct proc *pr){
   pq.proc_queue[prio][pq.pos_prio[prio]] = pr;
   
   pq.pos_prio[prio]++;
-  pq.total_size++;
 
+  // si la prioridad del proc actual es mayor a max_priority, entonces la prioridad maxima debe aumentar
   if(prio > pq.max_priority){
     pq.max_priority = prio;
   }
 }
-
-//fin prueba
 
 int nextpid = 1;
 struct spinlock pid_lock;
@@ -322,7 +320,6 @@ userinit(void)
   acquire(&pq.qlock);
   enqueue(p);
   release(&pq.qlock);
-  printf("userinit\n");
 
   release(&p->lock);
 }
@@ -384,7 +381,6 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
-
   release(&np->lock);
 
   acquire(&wait_lock);
@@ -397,10 +393,8 @@ fork(void)
   acquire(&pq.qlock);
   enqueue(np);
   release(&pq.qlock);
-  printf("fork pq\n");
 
   release(&np->lock);
-  printf("fork np\n");
   return pid;
 }
 
@@ -531,17 +525,12 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
     acquire(&pq.qlock);
-    /*
-    for (uint i = pq.max_priority; i < NPRIO-1 ; i--){
-      // Revisamos si tenemos un elemento en esa prioridad
-      if(pq.pos_prio[i] != 0){
-        p = dequeue();
-      }
-    }
-    */
+
+    // si hay procesos de la prioridad deseada, lo desencolamos
     if((p = dequeue()) != 0){
+      
       release(&pq.qlock);
-      printf("scheduler pq\n");
+      
       // Switch to chosen process.  It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.
@@ -554,11 +543,9 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
       release(&p->lock);
-      printf("scheduler p\n");
     } else {
       release(&pq.qlock);
     }
-    
   } 
 }
 
@@ -603,11 +590,9 @@ yield(void)
   acquire(&pq.qlock);
   enqueue(p);
   release(&pq.qlock);
-  printf("yield pq\n");
 
   sched();
   release(&p->lock);
-  printf("yield p\n");
 }
 
 // A fork child's very first scheduling by scheduler()
@@ -680,7 +665,6 @@ wakeup(void *chan)
         acquire(&pq.qlock);
         enqueue(p);
         release(&pq.qlock);
-        printf("wakeup pq\n");
       }
       release(&p->lock);
     }
@@ -705,14 +689,11 @@ kill(int pid)
         acquire(&pq.qlock);
         enqueue(p);
         release(&pq.qlock);
-        printf("kill pq\n");
       }
       release(&p->lock);
-      printf("kill p1\n");
       return 0;
     }
     release(&p->lock);
-    printf("kill p2\n");
   }
   return -1;
 }
