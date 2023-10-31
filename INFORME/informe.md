@@ -327,7 +327,6 @@ Como vimos en la parte teorica de la materia, la existencia del priority boost e
 
   ![Caso 4](./Tablas_Experimentos/caso4_mlfq.jpeg)
 
-
 - #### Caso 5: 2 cpubench 1 iobench:
 
   ![Caso 5](./Tablas_Experimentos/caso5_mlfq.jpeg)
@@ -372,3 +371,51 @@ Analisis de experimentos en MLFQ con Quantum 10 veces mas chicos.
 Las conclusiones que podemos sacar a partir de estas tablas, son muy parecidas a las conclusiones con RR. El principal cambio de Mlfq ya los vimos impactados
 en las otras tablas, analizando como el scheduler elige que proceso ejecutar de acuerdo a su prioridad. La diferencia la podemos notar en que la cantidad de MFLOP de 
 operaciones de Cpubench no varian exageradamente, como si las hacen las operaciones OPW y OPR de iobench.
+
+
+### Preguntas zulip:
+
+**1-**En un workload/escenario de cpubench todos los procesos deberían recibir la misma cantidad de quantums y tener el mismo número de MFLOPs totales. Esto debería ser cierto para RR y MLFQ.
+
+**Respuesta:**
+
+  Como podemos observar a continuación, los números de quantums y MFLOPS son similares tanto en RR y MLFQ, ya que en RR, los procesos realizan las mismas operaciones, y realizan su tarea de forma intercalada, ejecutando cada uno su quantum.
+
+  En MLFQ, los procesos siguen realizando las mismas operaciones, pero ahora son seleccionados segun su prioridad (comenzando desde la más alta por reglas de MLFQ). Así, se ejecutan los cpubench (todos de la misma prioridad), luego de completar un quantum de CPU, se desciende su prioridad, y se ejecuta el siguiente cpubench, así hasta ejecutar todos los que tengan la misma prioridad, y repitiendose pero ahora con los mismos cpubench pero con una prioridad mas baja, por lo que la distribución de selecciones por el scheduler es uniforme.
+
+![Caso 4](./Tablas_Experimentos/caso4.jpeg)
+
+![Caso 4](./Tablas_Experimentos/caso4_mlfq.jpeg)
+
+**2-**En un escenario con dos(2) cpubench y un(1) IObench: MLFQ debería favorecer al proceso que hace IO en comparación con RR. O sea se debería observar más cambios de contexto y más IOPs totales
+
+**Respuesta:**
+
+  En estos escenarios, MLFQ (quantum predeterminado y 10 veces más chico) da prioridad al proceso iobench (realiza alrededor del doble de ejecuciones), ya que siempre se mantiene en la prioridad más alta al no ser llamado por yield(), es decir, que no se detiene su ejecución por un timer interrupt, entonces el scheduler ejecuta iobench siempre que éste proceso esté en RUNNABLE.
+
+![Caso 5](./Tablas_Experimentos/caso5_mlfq.jpeg)
+
+![Caso 5](./Tablas_Experimentos/caso5_mlfq10.jpeg)
+
+**3-**Con RR, un quantum menor debería favorecer a los procesos que hacen IO (en comparación al mismo workload/escenario con quantum mas grande).
+
+**Respuesta:**
+
+  Dado que el proceso iobench no utiliza todo el quantum del CPU, al achicarlo, no se pierde tiempo de trabajo aunque se realizen mas context switch, por lo que se ve incrementada el output de trabajo, ya que hay menos tiempo entre cada espera por I/O.
+
+![Caso 1](./Tablas_Experimentos/caso1.jpeg)
+
+![Caso 1](./Tablas_Experimentos/caso1_10.jpeg)
+
+**4-**En escenarios de todos cpubench: al achicar el quantum el output total de trabajo debería ser menor o igual.
+
+**Respuesta:**
+
+  Viendo los test con quatum predeterminado y 10 veces mas chicos, podemos ver que el output de trabajo se reduce, ya que los procesos gastan más tiempo del quantum de PC realizando context switch, por lo que se pierde tiempo de trabajo total.
+
+![Caso 4](./Tablas_Experimentos/caso4.jpeg)
+
+![Caso 4](./Tablas_Experimentos/caso4_10.jpeg)
+
+
+**5-**Correr exactamente el mismo escenario 5 veces debería dar números muy similares.
