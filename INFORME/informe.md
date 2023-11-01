@@ -419,3 +419,27 @@ operaciones de Cpubench no varian exageradamente, como si las hacen las operacio
 
 
 **5-**Correr exactamente el mismo escenario 5 veces debería dar números muy similares.
+
+  Corriendo 5 casos escenarios de cpubench en MLFQ con quantum 10 veces menor, se obtuvieron los siguientes resultados
+
+  Primera ejecucion:
+    Promedio MFLOPS/100T: 811.9
+    Veces que fue ejecutado el proceso: 21036
+
+  Primera ejecucion:
+    Promedio MFLOPS/100T: 822.6
+    Veces que fue ejecutado el proceso: 21033
+
+  Primera ejecucion:
+    Promedio MFLOPS/100T: 822.1
+    Veces que fue ejecutado el proceso: 21055
+
+  Primera ejecucion:
+    Promedio MFLOPS/100T: 826.3
+    Veces que fue ejecutado el proceso: 21198
+
+  Primera ejecucion:
+    Promedio MFLOPS/100T: 826.5
+    Veces que fue ejecutado el proceso: 21223
+
+  Podemos ver claramente que los resultados al correr el mismo escenario 5 veces son muy similares, lo cual tiene sentido ya que el proceso ejecuta las mismas tareas sobre el mismo quantum.
